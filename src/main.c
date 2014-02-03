@@ -17,13 +17,13 @@ char ssBuffer[] = "00";
 
 static const GPathInfo HOUR_HAND_POINTS =
 {
-	3, (GPoint []) { { 0, -8 }, { -3, -30 }, { 3, -30 } } 
+	11, (GPoint []) { { 0, -8 }, { -3, -30 }, { -2, -30 }, { 0, -8 }, { -1, -30 }, { 0, -30 }, { 0, -8 }, { 1, -30 }, { 2, -30 }, { 0, -8 }, { -3, -30 } } 
 };
 
 
 static const GPathInfo MINUTE_HAND_POINTS =
 {
-	4, (GPoint []) { { -3, -33 }, { -3, -39 }, { 3, -39 }, { 3, -33 } } 
+	14, (GPoint []) { { -3, -33 }, { -3, -39 }, { -2, -39 }, { -2, -33 }, { -1, -33 }, { -1, -39 }, { 0, -39 }, { 0, -33 }, { 1, -33 }, { 1, -39 }, { 2, -39 }, { 2, -33 }, { 3, -33 }, { 3, -39 } } 
 };
 
 static const GPathInfo SECOND_HAND_POINTS =
@@ -64,25 +64,18 @@ static void clock_update_proc(Layer *layer, GContext *ctx)
 	gpath_move_to(hour_arrow, center);
 	gpath_move_to(minute_arrow, center);
 
-	//Minute = Hour Arrow + Minute Arrow
-	gpath_rotate_to(hour_arrow, TRIG_MAX_ANGLE * t->tm_sec / 60);
-	gpath_draw_filled(ctx, hour_arrow);
+	//Hour Arrow
+	gpath_rotate_to(hour_arrow, (TRIG_MAX_ANGLE * (((t->tm_hour % 12) * 6) + (t->tm_min / 10))) / (12 * 6));
+	//gpath_draw_filled(ctx, hour_arrow); //Filling don't work on small objects :(
 	gpath_draw_outline(ctx, hour_arrow);
-	gpath_rotate_to(minute_arrow, TRIG_MAX_ANGLE * t->tm_sec / 60);
-	gpath_draw_filled(ctx, minute_arrow);
-	gpath_draw_outline(ctx, minute_arrow);
 		
-	/*  // minute/hour hand
-  graphics_context_set_fill_color(ctx, GColorBlack);
-  //graphics_context_set_stroke_color(ctx, GColorBlack);
-
-  gpath_rotate_to(minute_arrow, TRIG_MAX_ANGLE * t->tm_min / 60);
-  gpath_draw_filled(ctx, minute_arrow);
-  //gpath_draw_outline(ctx, minute_arrow);
-
-  gpath_rotate_to(hour_arrow, (TRIG_MAX_ANGLE * (((t->tm_hour % 12) * 6) + (t->tm_min / 10))) / (12 * 6));
-  gpath_draw_filled(ctx, hour_arrow);
-  //gpath_draw_outline(ctx, hour_arrow);*/
+	//Minute = Hour Arrow + Minute Arrow
+	gpath_rotate_to(hour_arrow, TRIG_MAX_ANGLE * t->tm_min / 60);
+	//gpath_draw_filled(ctx, hour_arrow);
+	gpath_draw_outline(ctx, hour_arrow);
+	gpath_rotate_to(minute_arrow, TRIG_MAX_ANGLE * t->tm_min / 60);
+	//gpath_draw_filled(ctx, minute_arrow);
+	gpath_draw_outline(ctx, minute_arrow);
 }
 
 static void secs_update_proc(Layer *layer, GContext *ctx) 
@@ -122,8 +115,9 @@ static void secs_update_proc(Layer *layer, GContext *ctx)
 void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 {
 	int seconds = tick_time->tm_sec;
-	layer_mark_dirty(clock_layer);
 	layer_mark_dirty(secs_layer);
+	if ((seconds >= 0 && seconds <= 3) || MINUTE_UNIT)
+		layer_mark_dirty(clock_layer);
 
 /*
 	strftime(ssBuffer, sizeof(ssBuffer), "%S", tick_time);
