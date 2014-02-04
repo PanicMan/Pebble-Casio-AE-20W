@@ -97,6 +97,7 @@ static void secs_update_proc(Layer *layer, GContext *ctx)
 		gpath_draw_outline(ctx, second_arrow);
 	}	
 /*	
+	//Other possibility of Drawing the Second Arrow
 	GPoint ptSecE, ptSecA;
 	const int16_t SecLen = bounds.size.w / 2;
 
@@ -119,7 +120,6 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 	if ((seconds >= 0 && seconds <= 3) || MINUTE_UNIT)
 		layer_mark_dirty(clock_layer);
 
-/*
 	strftime(ssBuffer, sizeof(ssBuffer), "%S", tick_time);
 	text_layer_set_text(ss_layer, ssBuffer);
 
@@ -131,24 +131,17 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 			strftime(hhmmBuffer, sizeof(hhmmBuffer), "%I:%M", tick_time);
 		
 		//strcpy(hhmmBuffer, "22:22");
+		//strftime(hhmmBuffer, sizeof(hhmmBuffer), "%S:%S", tick_time);
 		text_layer_set_text(hhmm_layer, hhmmBuffer);
 		
 		strftime(ddmmBuffer, sizeof(ddmmBuffer), "%d-%m", tick_time);
-		//snprintf(ddmmBuffer, sizeof(ddmmBuffer), "%d", rc.origin.x);
 		text_layer_set_text(ddmm_layer, ddmmBuffer);
 		
-		strftime(wdBuffer, sizeof(wdBuffer), "%a", tick_time);
-		upcase(wdBuffer);
-		text_layer_set_text(wd_layer, wdBuffer);
-
-		strftime(yyyyBuffer, sizeof(yyyyBuffer), "%Y", tick_time);
-		text_layer_set_text(yyyy_layer, yyyyBuffer);
-
 		//Check DST at 4h at morning
 		if ((tick_time->tm_hour == 4 && tick_time->tm_min == 0) || units_changed == MINUTE_UNIT)
 			layer_set_hidden(bitmap_layer_get_layer(dst_layer), tick_time->tm_isdst != 1);
 	}
-*/
+
 }
 
 void window_load(Window *window)
@@ -179,42 +172,42 @@ void window_load(Window *window)
 	digitM = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DIGITAL_30));
 	digitL = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DIGITAL_40));
 
-/*	//DAY+MONTH layer
-	ddmm_layer = text_layer_create(GRect(2, 5, 70, 32));
+	//DAY+MONTH layer
+	ddmm_layer = text_layer_create(GRect(86, 80, 53, 21));
 	text_layer_set_background_color(ddmm_layer, GColorClear);
 	text_layer_set_text_color(ddmm_layer, GColorBlack);
 	text_layer_set_text_alignment(ddmm_layer, GTextAlignmentCenter);
 	text_layer_set_font(ddmm_layer, digitS);
 	layer_add_child(window_layer, text_layer_get_layer(ddmm_layer));
-*/      
-/*	//HOUR+MINUTE layer
-	hhmm_layer = text_layer_create(GRect(-110, 50, 110, 75));
+      
+	//HOUR+MINUTE layer
+	hhmm_layer = text_layer_create(GRect(10, 96, 95, 41));
 	text_layer_set_background_color(hhmm_layer, GColorClear);
 	text_layer_set_text_color(hhmm_layer, GColorBlack);
-	text_layer_set_text_alignment(hhmm_layer, GTextAlignmentCenter);
+	text_layer_set_text_alignment(hhmm_layer, GTextAlignmentRight);
 	text_layer_set_font(hhmm_layer, digitL);
 	layer_add_child(window_layer, text_layer_get_layer(hhmm_layer));
-*/      
-/*	//SECOND layer
-	ss_layer = text_layer_create(GRect(111, 55, 30, 30));
+      
+	//SECOND layer
+	ss_layer = text_layer_create(GRect(106, 106, 31, 31));
 	text_layer_set_background_color(ss_layer, GColorClear);
 	text_layer_set_text_color(ss_layer, GColorBlack);
 	text_layer_set_text_alignment(ss_layer, GTextAlignmentCenter);
-	text_layer_set_font(ss_layer, digitS);
+	text_layer_set_font(ss_layer, digitM);
 	layer_add_child(window_layer, text_layer_get_layer(ss_layer));
-*/      
+     
+	batteryAll = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UTILITIES);
 /*	//Init battery
-	batteryAll = gbitmap_create_with_resource(RESOURCE_ID_RESOURCE_ID_IMAGE_BATTERIES);
 	battery_layer = bitmap_layer_create(GRect(116, 90, 20, 10)); 
 	bitmap_layer_set_background_color(battery_layer, GColorClear);
 	layer_add_child(window_layer, bitmap_layer_get_layer(battery_layer));
 */
-/*	//DST layer, have to be after battery, uses its image
-	dst_layer = bitmap_layer_create(GRect(123, 52, 12, 5));
+	//DST layer, have to be after battery, uses its image
+	dst_layer = bitmap_layer_create(GRect(122, 110, 12, 5));
 	bitmap_layer_set_background_color(dst_layer, GColorClear);
 	bitmap_layer_set_bitmap(dst_layer, gbitmap_create_as_sub_bitmap(batteryAll, GRect(0, 110, 12, 5)));
 	layer_add_child(window_layer, bitmap_layer_get_layer(dst_layer));
-*/      
+      
 /*	//Init bluetooth radio
 	radio = gbitmap_create_with_resource(RESOURCE_ID_RESOURCE_ID_IMAGE_RADIO);
 	radio_layer = bitmap_layer_create(GRect(106, 130, 31, 33));
@@ -256,9 +249,9 @@ void window_unload(Window *window)
 	gpath_destroy(second_arrow);
 	
 	//Destroy text layers
-//	text_layer_destroy(ddmm_layer);
-//	text_layer_destroy(hhmm_layer);
-//	text_layer_destroy(ss_layer);
+	text_layer_destroy(ddmm_layer);
+	text_layer_destroy(hhmm_layer);
+	text_layer_destroy(ss_layer);
 	
 	//Unload Fonts
 	fonts_unload_custom_font(digitS);
@@ -266,11 +259,11 @@ void window_unload(Window *window)
 	fonts_unload_custom_font(digitL);
 	
 	//Destroy GBitmaps
-//	gbitmap_destroy(batteryAll);
+	gbitmap_destroy(batteryAll);
 	gbitmap_destroy(background);
 
 	//Destroy BitmapLayers
-//	bitmap_layer_destroy(dst_layer);
+	bitmap_layer_destroy(dst_layer);
 //	bitmap_layer_destroy(battery_layer);
 //	bitmap_layer_destroy(radio_layer);
 	bitmap_layer_destroy(background_layer);
