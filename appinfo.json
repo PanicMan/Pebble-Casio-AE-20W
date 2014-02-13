@@ -1,11 +1,15 @@
 {
-    "versionLabel": "1.0",
+    "versionLabel": "1.1",
     "uuid": "36ceec93-b32e-47e3-8353-971daf398007",
-    "appKeys": {},
+    "appKeys": {
+        "inv": 1,
+        "datefmt": 3,
+        "vibr": 2
+    },
     "longName": "Casio AE-20W",
-    "versionCode": 2,
+    "versionCode": 3,
     "capabilities": [
-        ""
+        "configurable"
     ],
     "shortName": "Casio AE-20W",
     "companyName": "PanicMan",
@@ -28,7 +32,7 @@
             {
                 "characterRegex": "[-0-9:\\s]",
                 "type": "font",
-                "name": "FONT_DIGITAL_20",
+                "name": "FONT_DIGITAL_40",
                 "file": "fonts/DIGITALBOLD2.TTF"
             },
             {
@@ -38,9 +42,9 @@
                 "file": "fonts/DIGITALBOLD2.TTF"
             },
             {
-                "characterRegex": "[-0-9:\\s]",
+                "characterRegex": "[-/0-9.]",
                 "type": "font",
-                "name": "FONT_DIGITAL_40",
+                "name": "FONT_DIGITAL_20",
                 "file": "fonts/DIGITALBOLD2.TTF"
             },
             {

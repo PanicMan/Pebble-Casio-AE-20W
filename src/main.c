@@ -1,5 +1,23 @@
 #include <pebble.h>
 
+enum ConfigKeys {
+	CONFIG_KEY_INV=1,
+	CONFIG_KEY_VIBR=2,
+	CONFIG_KEY_DATEFMT=3
+};
+
+typedef struct {
+	bool inv;
+	bool vibr;
+	uint16_t datefmt;
+} CfgDta_t;
+
+static const uint32_t const segments[] = {100, 100, 100};
+static const VibePattern vibe_pat = {
+	.durations = segments,
+	.num_segments = ARRAY_LENGTH(segments),
+};
+
 Window *window;
 Layer *clock_layer, *secs_layer;
 TextLayer *ddmm_layer, *hhmm_layer, *ss_layer;
@@ -8,6 +26,7 @@ InverterLayer *inv_layer;
 
 static GBitmap *background, *batteryAll;
 static GFont digitS, digitM, digitL;
+static CfgDta_t CfgData;
 
 static GPath *hour_arrow, *minute_arrow, *second_arrow;
 
@@ -31,7 +50,7 @@ static const GPathInfo SECOND_HAND_POINTS =
 	3, (GPoint []) { { 0, -7 }, { -1, -26 }, { 1, -26 } } 
 };
 
-/*
+//-----------------------------------------------------------------------------------------------------------------------
 void battery_state_service_handler(BatteryChargeState charge_state) 
 {
 	int nImage = 0;
@@ -40,17 +59,15 @@ void battery_state_service_handler(BatteryChargeState charge_state)
 	else 
 		nImage = 10 - (charge_state.charge_percent / 10);
 	
-	GRect sub_rect = GRect(0, 10*nImage, 20, 10*nImage+10);
+	GRect sub_rect = GRect(0, 10*nImage, 20, 10);
 	bitmap_layer_set_bitmap(battery_layer, gbitmap_create_as_sub_bitmap(batteryAll, sub_rect));
 }
-*/
-/*
+//-----------------------------------------------------------------------------------------------------------------------
 void bluetooth_connection_handler(bool connected)
 {
 	layer_set_hidden(bitmap_layer_get_layer(radio_layer), connected != true);
 }
-*/
-
+//-----------------------------------------------------------------------------------------------------------------------
 static void clock_update_proc(Layer *layer, GContext *ctx) 
 {
 	GRect bounds = layer_get_bounds(layer);
@@ -77,7 +94,7 @@ static void clock_update_proc(Layer *layer, GContext *ctx)
 	//gpath_draw_filled(ctx, minute_arrow);
 	gpath_draw_outline(ctx, minute_arrow);
 }
-
+//-----------------------------------------------------------------------------------------------------------------------
 static void secs_update_proc(Layer *layer, GContext *ctx) 
 {
 	GRect bounds = layer_get_bounds(layer);
@@ -112,7 +129,7 @@ static void secs_update_proc(Layer *layer, GContext *ctx)
 	}
 */
 }
-
+//-----------------------------------------------------------------------------------------------------------------------
 void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 {
 	int seconds = tick_time->tm_sec;
@@ -134,23 +151,112 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 		//strftime(hhmmBuffer, sizeof(hhmmBuffer), "%S:%S", tick_time);
 		text_layer_set_text(hhmm_layer, hhmmBuffer);
 		
-		strftime(ddmmBuffer, sizeof(ddmmBuffer), "%d-%m", tick_time);
+		strftime(ddmmBuffer, sizeof(ddmmBuffer), 
+			CfgData.datefmt == 1 ? "%d-%m" : 
+			CfgData.datefmt == 2 ? "%d/%m" : 
+			CfgData.datefmt == 3 ? "%m/%d" : "%d.%m", tick_time);
 		text_layer_set_text(ddmm_layer, ddmmBuffer);
 		
 		//Check DST at 4h at morning
 		if ((tick_time->tm_hour == 4 && tick_time->tm_min == 0) || units_changed == MINUTE_UNIT)
 			layer_set_hidden(bitmap_layer_get_layer(dst_layer), tick_time->tm_isdst != 1);
+		
+		//Hourly vibrate
+		if (CfgData.vibr && tick_time->tm_min == 0)
+			vibes_enqueue_custom_pattern(vibe_pat); 	
 	}
-
 }
+//-----------------------------------------------------------------------------------------------------------------------
+static void update_configuration(void)
+{
+    if (persist_exists(CONFIG_KEY_INV))
+		CfgData.inv = persist_read_bool(CONFIG_KEY_INV);
+	else	
+		CfgData.inv = false;
+	
+    if (persist_exists(CONFIG_KEY_VIBR))
+		CfgData.vibr = persist_read_bool(CONFIG_KEY_VIBR);
+	else	
+		CfgData.vibr = false;
+	
+    if (persist_exists(CONFIG_KEY_DATEFMT))
+		CfgData.datefmt = (int16_t)persist_read_int(CONFIG_KEY_DATEFMT);
+	else	
+		CfgData.datefmt = 1;
 
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Curr Conf: inv:%d, vibr:%d, datefmt:%d", CfgData.inv, CfgData.vibr, CfgData.datefmt);
+	
+	Layer *window_layer = window_get_root_layer(window);
+
+	//Inverter Layer
+	layer_remove_from_parent(inverter_layer_get_layer(inv_layer));
+	if (CfgData.inv)
+		layer_add_child(window_layer, inverter_layer_get_layer(inv_layer));
+	
+	//Get a time structure so that it doesn't start blank
+	time_t temp = time(NULL);
+	struct tm *t = localtime(&temp);
+
+	//Manually call the tick handler when the window is loading
+	tick_handler(t, MINUTE_UNIT);
+
+	//Set Battery state
+	BatteryChargeState btchg = battery_state_service_peek();
+	battery_state_service_handler(btchg);
+	
+	//Set Bluetooth state
+	bool connected = bluetooth_connection_service_peek();
+	bluetooth_connection_handler(connected);
+}
+//-----------------------------------------------------------------------------------------------------------------------
+void in_received_handler(DictionaryIterator *received, void *ctx)
+{
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "enter in_received_handler");
+    
+	Tuple *akt_tuple = dict_read_first(received);
+    while (akt_tuple)
+    {
+        app_log(APP_LOG_LEVEL_DEBUG,
+                __FILE__,
+                __LINE__,
+                "KEY %d=%s", (int16_t)akt_tuple->key,
+                akt_tuple->value->cstring);
+
+		if (akt_tuple->key == CONFIG_KEY_INV)
+			persist_write_bool(CONFIG_KEY_INV, strcmp(akt_tuple->value->cstring, "yes") == 0);
+
+		if (akt_tuple->key == CONFIG_KEY_VIBR)
+			persist_write_bool(CONFIG_KEY_VIBR, strcmp(akt_tuple->value->cstring, "yes") == 0);
+		
+		if (akt_tuple->key == CONFIG_KEY_DATEFMT)
+			persist_write_int(CONFIG_KEY_DATEFMT, 
+				strcmp(akt_tuple->value->cstring, "fra") == 0 ? 1 : 
+				strcmp(akt_tuple->value->cstring, "eng") == 0 ? 2 : 
+				strcmp(akt_tuple->value->cstring, "usa") == 0 ? 3 : 0);
+		
+		akt_tuple = dict_read_next(received);
+	}
+	
+    update_configuration();
+}
+//-----------------------------------------------------------------------------------------------------------------------
+void in_dropped_handler(AppMessageResult reason, void *ctx)
+{
+    app_log(APP_LOG_LEVEL_WARNING,
+            __FILE__,
+            __LINE__,
+            "Message dropped, reason code %d",
+            reason);
+}
+//-----------------------------------------------------------------------------------------------------------------------
 void window_load(Window *window)
 {
 	Layer *window_layer = window_get_root_layer(window);
-
+	GRect bounds = layer_get_bounds(window_layer);
+	
 	//Init Background
 	background = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND);
-	background_layer = bitmap_layer_create(GRect(0, 0, 144, 168));
+	background_layer = bitmap_layer_create(bounds);
 	bitmap_layer_set_background_color(background_layer, GColorClear);
 	bitmap_layer_set_bitmap(background_layer, background);
 	layer_add_child(window_layer, bitmap_layer_get_layer(background_layer));
@@ -171,6 +277,7 @@ void window_load(Window *window)
 	digitS = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DIGITAL_20));
 	digitM = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DIGITAL_30));
 	digitL = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DIGITAL_40));
+	batteryAll = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UTILITIES);
 
 	//DAY+MONTH layer
 	ddmm_layer = text_layer_create(GRect(86, 80, 53, 21));
@@ -196,47 +303,30 @@ void window_load(Window *window)
 	text_layer_set_font(ss_layer, digitM);
 	layer_add_child(window_layer, text_layer_get_layer(ss_layer));
      
-	batteryAll = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UTILITIES);
-/*	//Init battery
-	battery_layer = bitmap_layer_create(GRect(116, 90, 20, 10)); 
-	bitmap_layer_set_background_color(battery_layer, GColorClear);
-	layer_add_child(window_layer, bitmap_layer_get_layer(battery_layer));
-*/
 	//DST layer, have to be after battery, uses its image
 	dst_layer = bitmap_layer_create(GRect(122, 110, 12, 5));
 	bitmap_layer_set_background_color(dst_layer, GColorClear);
 	bitmap_layer_set_bitmap(dst_layer, gbitmap_create_as_sub_bitmap(batteryAll, GRect(0, 110, 12, 5)));
 	layer_add_child(window_layer, bitmap_layer_get_layer(dst_layer));
       
-/*	//Init bluetooth radio
-	radio = gbitmap_create_with_resource(RESOURCE_ID_RESOURCE_ID_IMAGE_RADIO);
-	radio_layer = bitmap_layer_create(GRect(106, 130, 31, 33));
-	bitmap_layer_set_background_color(radio_layer, GColorClear);
-	bitmap_layer_set_bitmap(radio_layer, radio);
-	bitmap_layer_set_compositing_mode(radio_layer, GCompOpAnd);
-	layer_add_child(window_layer, bitmap_layer_get_layer(radio_layer));
-*/	
-	//Init inverter_layer
-	inv_layer = inverter_layer_create(GRect(0, 0, 144, 168));
-	//layer_add_child(window_layer, inverter_layer_get_layer(inv_layer));
-
-	//Get a time structure so that it doesn't start blank
-	time_t temp = time(NULL);
-	struct tm *t = localtime(&temp);
-
-	//Manually call the tick handler when the window is loading
-	tick_handler(t, MINUTE_UNIT);
-/*	
-	//Set Battery state
-	BatteryChargeState btchg = battery_state_service_peek();
-	battery_state_service_handler(btchg);
+	//Init battery
+	battery_layer = bitmap_layer_create(GRect(118, 150, 20, 10)); 
+	bitmap_layer_set_background_color(battery_layer, GColorClear);
+	layer_add_child(window_layer, bitmap_layer_get_layer(battery_layer));
 	
-	//Set Bluetooth state
-	bool connected = bluetooth_connection_service_peek();
-	bluetooth_connection_handler(connected);
-*/
+	//Init bluetooth radio
+	radio_layer = bitmap_layer_create(GRect(110, 151, 5, 9));
+	bitmap_layer_set_background_color(radio_layer, GColorClear);
+	bitmap_layer_set_bitmap(radio_layer, gbitmap_create_as_sub_bitmap(batteryAll, GRect(0, 115, 5, 9)));
+	layer_add_child(window_layer, bitmap_layer_get_layer(radio_layer));
+	
+	//Init Inverter Layer
+	inv_layer = inverter_layer_create(bounds);	
+	
+	//Update Configuration
+	update_configuration();
 }
- 
+//-----------------------------------------------------------------------------------------------------------------------
 void window_unload(Window *window)
 {
 	//Destroy Layers
@@ -264,14 +354,14 @@ void window_unload(Window *window)
 
 	//Destroy BitmapLayers
 	bitmap_layer_destroy(dst_layer);
-//	bitmap_layer_destroy(battery_layer);
-//	bitmap_layer_destroy(radio_layer);
+	bitmap_layer_destroy(battery_layer);
+	bitmap_layer_destroy(radio_layer);
 	bitmap_layer_destroy(background_layer);
 	
 	//Destroy Inverter Layer
 	inverter_layer_destroy(inv_layer);
 }
-
+//-----------------------------------------------------------------------------------------------------------------------
 void handle_init(void) {
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers) {
@@ -279,21 +369,31 @@ void handle_init(void) {
 		.unload = window_unload,
 	});
     window_stack_push(window, true);
+
+	//Subscribe services
 	tick_timer_service_subscribe(SECOND_UNIT, (TickHandler)tick_handler);
-//	battery_state_service_subscribe(&battery_state_service_handler);
-//	bluetooth_connection_service_subscribe(&bluetooth_connection_handler);
+	battery_state_service_subscribe(&battery_state_service_handler);
+	bluetooth_connection_service_subscribe(&bluetooth_connection_handler);
+	
+	//Subscribe messages
+	app_message_register_inbox_received(in_received_handler);
+    app_message_register_inbox_dropped(in_dropped_handler);
+    app_message_open(128, 128);
+	
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
 }
-
+//-----------------------------------------------------------------------------------------------------------------------
 void handle_deinit(void) {
+	app_message_deregister_callbacks();
 	tick_timer_service_unsubscribe();
-//	battery_state_service_unsubscribe();
-//	bluetooth_connection_service_unsubscribe();
+	battery_state_service_unsubscribe();
+	bluetooth_connection_service_unsubscribe();
 	window_destroy(window);
 }
-
+//-----------------------------------------------------------------------------------------------------------------------
 int main(void) {
 	  handle_init();
 	  app_event_loop();
 	  handle_deinit();
 }
+//-----------------------------------------------------------------------------------------------------------------------
