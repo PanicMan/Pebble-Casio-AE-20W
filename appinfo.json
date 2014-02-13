@@ -50,7 +50,7 @@
             {
                 "type": "png",
                 "name": "IMAGE_BACKGROUND",
-                "file": "images/background.png"
+                "file": "images/Background.png"
             }
         ]
     }
