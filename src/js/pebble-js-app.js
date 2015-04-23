@@ -17,11 +17,12 @@ Pebble.addEventListener("showConfiguration", function() {
     console.log("read options: " + JSON.stringify(options));
     console.log("showing configuration");
     if (options == null) {
-        var uri = 'http://panicman.byto.de/config_common.html?title=Casio%20AE-20W';
+        var uri = 'http://panicman.byto.de/config_c20ae20w.html?title=Casio%20AE-20W';
     } else {
-        var uri = 'http://panicman.byto.de/config_common.html?title=Casio%20AE-20W' + 
+        var uri = 'http://panicman.byto.de/config_c20ae20w.html?title=Casio%20AE-20W' + 
 			'&inv=' + encodeURIComponent(options['inv']) + 
 			'&vibr=' + encodeURIComponent(options['vibr']) + 
+			'&secs=' + encodeURIComponent(options['secs']) + 
 			'&datefmt=' + encodeURIComponent(options['datefmt']);
     }
 	console.log("Uri: "+uri);

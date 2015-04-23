@@ -3,19 +3,27 @@
 enum ConfigKeys {
 	CONFIG_KEY_INV=1,
 	CONFIG_KEY_VIBR=2,
-	CONFIG_KEY_DATEFMT=3
+	CONFIG_KEY_DATEFMT=3,
+	CONFIG_KEY_SECS=4
 };
 
 typedef struct {
 	bool inv;
 	bool vibr;
+	bool secs;
 	uint16_t datefmt;
 } CfgDta_t;
 
-static const uint32_t const segments[] = {100, 100, 100};
+static const uint32_t segments[] = {100, 100, 100};
 static const VibePattern vibe_pat = {
 	.durations = segments,
 	.num_segments = ARRAY_LENGTH(segments),
+};
+
+static const uint32_t segments_bt[] = {100, 100, 100, 100, 400, 400, 100, 100, 100};
+static const VibePattern vibe_pat_bt = {
+	.durations = segments_bt,
+	.num_segments = ARRAY_LENGTH(segments_bt),
 };
 
 Window *window;
@@ -66,6 +74,9 @@ void battery_state_service_handler(BatteryChargeState charge_state)
 void bluetooth_connection_handler(bool connected)
 {
 	layer_set_hidden(bitmap_layer_get_layer(radio_layer), connected != true);
+	
+	if (connected != true)
+		vibes_enqueue_custom_pattern(vibe_pat_bt); 	
 }
 //-----------------------------------------------------------------------------------------------------------------------
 static void clock_update_proc(Layer *layer, GContext *ctx) 
@@ -134,20 +145,20 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 {
 	int seconds = tick_time->tm_sec;
 	layer_mark_dirty(secs_layer);
-	if ((seconds >= 0 && seconds <= 3) || MINUTE_UNIT)
-		layer_mark_dirty(clock_layer);
 
 	strftime(ssBuffer, sizeof(ssBuffer), "%S", tick_time);
 	text_layer_set_text(ss_layer, ssBuffer);
 
 	if(seconds == 0 || units_changed == MINUTE_UNIT)
 	{
+		layer_mark_dirty(clock_layer);
+
 		if(clock_is_24h_style())
 			strftime(hhmmBuffer, sizeof(hhmmBuffer), "%H:%M", tick_time);
 		else
 			strftime(hhmmBuffer, sizeof(hhmmBuffer), "%I:%M", tick_time);
 		
-		//strcpy(hhmmBuffer, "22:22");
+		//strcpy(hhmmBuffer, "88:88");
 		//strftime(hhmmBuffer, sizeof(hhmmBuffer), "%S:%S", tick_time);
 		text_layer_set_text(hhmm_layer, hhmmBuffer);
 		
@@ -184,6 +195,11 @@ static void update_configuration(void)
 	else	
 		CfgData.datefmt = 1;
 
+    if (persist_exists(CONFIG_KEY_SECS))
+		CfgData.secs = persist_read_bool(CONFIG_KEY_SECS);
+	else	
+		CfgData.secs = true;
+	
 	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Curr Conf: inv:%d, vibr:%d, datefmt:%d", CfgData.inv, CfgData.vibr, CfgData.datefmt);
 	
 	Layer *window_layer = window_get_root_layer(window);
@@ -192,6 +208,16 @@ static void update_configuration(void)
 	layer_remove_from_parent(inverter_layer_get_layer(inv_layer));
 	if (CfgData.inv)
 		layer_add_child(window_layer, inverter_layer_get_layer(inv_layer));
+	
+	//Seconds Visible?
+	layer_remove_from_parent(text_layer_get_layer(ss_layer));
+	if (CfgData.secs)
+	{
+		layer_add_child(window_layer, text_layer_get_layer(ss_layer));
+		text_layer_set_text_alignment(hhmm_layer, GTextAlignmentLeft);
+	}
+	else
+		text_layer_set_text_alignment(hhmm_layer, GTextAlignmentCenter);
 	
 	//Get a time structure so that it doesn't start blank
 	time_t temp = time(NULL);
@@ -228,6 +254,9 @@ void in_received_handler(DictionaryIterator *received, void *ctx)
 		if (akt_tuple->key == CONFIG_KEY_VIBR)
 			persist_write_bool(CONFIG_KEY_VIBR, strcmp(akt_tuple->value->cstring, "yes") == 0);
 		
+		if (akt_tuple->key == CONFIG_KEY_SECS)
+			persist_write_bool(CONFIG_KEY_SECS, strcmp(akt_tuple->value->cstring, "yes") == 0);
+
 		if (akt_tuple->key == CONFIG_KEY_DATEFMT)
 			persist_write_int(CONFIG_KEY_DATEFMT, 
 				strcmp(akt_tuple->value->cstring, "fra") == 0 ? 1 : 
@@ -251,6 +280,10 @@ void in_dropped_handler(AppMessageResult reason, void *ctx)
 //-----------------------------------------------------------------------------------------------------------------------
 void window_load(Window *window)
 {
+#ifdef PBL_COLOR
+#else
+#endif
+
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_bounds(window_layer);
 	
@@ -288,13 +321,13 @@ void window_load(Window *window)
 	layer_add_child(window_layer, text_layer_get_layer(ddmm_layer));
       
 	//HOUR+MINUTE layer
-	hhmm_layer = text_layer_create(GRect(10, 96, 95, 41));
+	hhmm_layer = text_layer_create(GRect(10, 96, bounds.size.w-20, 41));
 	text_layer_set_background_color(hhmm_layer, GColorClear);
 	text_layer_set_text_color(hhmm_layer, GColorBlack);
-	text_layer_set_text_alignment(hhmm_layer, GTextAlignmentRight);
+	text_layer_set_text_alignment(hhmm_layer, GTextAlignmentLeft);
 	text_layer_set_font(hhmm_layer, digitL);
 	layer_add_child(window_layer, text_layer_get_layer(hhmm_layer));
-      
+	
 	//SECOND layer
 	ss_layer = text_layer_create(GRect(106, 106, 31, 31));
 	text_layer_set_background_color(ss_layer, GColorClear);

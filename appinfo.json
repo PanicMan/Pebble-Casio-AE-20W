@@ -1,57 +1,67 @@
 {
-    "versionLabel": "1.1",
-    "uuid": "36ceec93-b32e-47e3-8353-971daf398007",
     "appKeys": {
-        "inv": 1,
         "datefmt": 3,
+        "inv": 1,
+        "secs": 4,
         "vibr": 2
     },
-    "longName": "Casio AE-20W",
-    "versionCode": 3,
     "capabilities": [
         "configurable"
     ],
-    "shortName": "Casio AE-20W",
     "companyName": "PanicMan",
-    "watchapp": {
-        "watchface": true
-    },
+    "longName": "Casio AE-20W",
+    "projectType": "native",
     "resources": {
         "media": [
             {
-                "type": "png",
+                "file": "images/Battery.png",
                 "name": "IMAGE_UTILITIES",
-                "file": "images/Battery.png"
+                "type": "png"
             },
             {
+                "file": "images/MenuImage.png",
                 "menuIcon": true,
-                "type": "png",
                 "name": "IMAGE_MENU",
-                "file": "images/MenuImage.png"
-            },
-            {
-                "characterRegex": "[-0-9:\\s]",
-                "type": "font",
-                "name": "FONT_DIGITAL_40",
-                "file": "fonts/DIGITALBOLD2.TTF"
-            },
-            {
-                "characterRegex": "[-0-9:\\s]",
-                "type": "font",
-                "name": "FONT_DIGITAL_30",
-                "file": "fonts/DIGITALBOLD2.TTF"
+                "type": "png"
             },
             {
                 "characterRegex": "[-/0-9.]",
-                "type": "font",
+                "compatibility": "2.7",
+                "file": "fonts/DIGITALBOLD2.TTF",
                 "name": "FONT_DIGITAL_20",
-                "file": "fonts/DIGITALBOLD2.TTF"
+                "type": "font"
             },
             {
-                "type": "png",
+                "characterRegex": "[-0-9:\\s]",
+                "compatibility": "2.7",
+                "file": "fonts/DIGITALBOLD2.TTF",
+                "name": "FONT_DIGITAL_30",
+                "type": "font"
+            },
+            {
+                "characterRegex": "[-0-9:\\s]",
+                "compatibility": "2.7",
+                "file": "fonts/DIGITALBOLD2.TTF",
+                "name": "FONT_DIGITAL_40",
+                "type": "font"
+            },
+            {
+                "file": "images/Background.png",
                 "name": "IMAGE_BACKGROUND",
-                "file": "images/Background.png"
+                "type": "png"
             }
         ]
+    },
+    "sdkVersion": "3",
+    "shortName": "Casio AE-20W",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "36ceec93-b32e-47e3-8353-971daf398007",
+    "versionCode": 3,
+    "versionLabel": "2.0",
+    "watchapp": {
+        "watchface": true
     }
 }
