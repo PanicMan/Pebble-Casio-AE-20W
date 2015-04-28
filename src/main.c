@@ -204,11 +204,6 @@ static void update_configuration(void)
 	
 	Layer *window_layer = window_get_root_layer(window);
 
-	//Inverter Layer
-	layer_remove_from_parent(inverter_layer_get_layer(inv_layer));
-	if (CfgData.inv)
-		layer_add_child(window_layer, inverter_layer_get_layer(inv_layer));
-	
 	//Seconds Visible?
 	layer_remove_from_parent(text_layer_get_layer(ss_layer));
 	if (CfgData.secs)
@@ -218,6 +213,11 @@ static void update_configuration(void)
 	}
 	else
 		text_layer_set_text_alignment(hhmm_layer, GTextAlignmentCenter);
+	
+	//Inverter Layer
+	layer_remove_from_parent(inverter_layer_get_layer(inv_layer));
+	if (CfgData.inv)
+		layer_add_child(window_layer, inverter_layer_get_layer(inv_layer));
 	
 	//Get a time structure so that it doesn't start blank
 	time_t temp = time(NULL);
@@ -280,10 +280,6 @@ void in_dropped_handler(AppMessageResult reason, void *ctx)
 //-----------------------------------------------------------------------------------------------------------------------
 void window_load(Window *window)
 {
-#ifdef PBL_COLOR
-#else
-#endif
-
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_bounds(window_layer);
 	
