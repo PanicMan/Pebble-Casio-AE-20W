@@ -3,7 +3,8 @@
         "datefmt": 3,
         "inv": 1,
         "secs": 4,
-        "vibr": 2
+        "vibr": 2,
+        "vibr_bt": 5
     },
     "capabilities": [
         "configurable"
@@ -13,6 +14,11 @@
     "projectType": "native",
     "resources": {
         "media": [
+            {
+                "file": "images/Background.png",
+                "name": "IMAGE_BACKGROUND",
+                "type": "png"
+            },
             {
                 "file": "images/Battery.png",
                 "name": "IMAGE_UTILITIES",
@@ -44,11 +50,6 @@
                 "file": "fonts/DIGITALBOLD2.TTF",
                 "name": "FONT_DIGITAL_40",
                 "type": "font"
-            },
-            {
-                "file": "images/Background.png",
-                "name": "IMAGE_BACKGROUND",
-                "type": "png"
             }
         ]
     },
@@ -59,8 +60,7 @@
         "basalt"
     ],
     "uuid": "36ceec93-b32e-47e3-8353-971daf398007",
-    "versionCode": 3,
-    "versionLabel": "2.1",
+    "versionLabel": "2.2",
     "watchapp": {
         "watchface": true
     }

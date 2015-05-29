@@ -1,15 +1,17 @@
 #include <pebble.h>
+#include "effect_layer.h"
 
 enum ConfigKeys {
 	CONFIG_KEY_INV=1,
 	CONFIG_KEY_VIBR=2,
 	CONFIG_KEY_DATEFMT=3,
-	CONFIG_KEY_SECS=4
+	CONFIG_KEY_SECS=4,
+	CONFIG_KEY_VIBR_BT=5
 };
 
 typedef struct {
 	bool inv;
-	bool vibr;
+	bool vibr, vibr_bt;
 	bool secs;
 	uint16_t datefmt;
 } CfgDta_t;
@@ -32,50 +34,73 @@ TextLayer *ddmm_layer, *hhmm_layer, *ss_layer;
 BitmapLayer *background_layer, *battery_layer, *radio_layer, *dst_layer;
 InverterLayer *inv_layer;
 
-static GBitmap *background, *batteryAll;
+static GBitmap *background, *batteryAll, *batteryAkt;
 static GFont digitS, digitM, digitL;
 static CfgDta_t CfgData;
-
+static bool bIsCharging;
+static uint8_t aktBatt, aktBattAnim;
+static AppTimer *timer_batt;
 static GPath *hour_arrow, *minute_arrow, *second_arrow;
 
 char ddmmBuffer[] = "00-00";
 char hhmmBuffer[] = "00:00";
 char ssBuffer[] = "00";
 
-static const GPathInfo HOUR_HAND_POINTS =
+static const GPathInfo HOUR_HAND_POINTS = {	3, (GPoint []) { { 0, -8 }, { -3, -30 }, { 3, -30 } } };
+static const GPathInfo MINUTE_HAND_POINTS = { 4, (GPoint []) { { -3, -33 }, { -3, -40 }, { 3, -40 }, { 3, -33 } } };
+static const GPathInfo SECOND_HAND_POINTS = { 3, (GPoint []) { { 0, -7 }, { -1, -26 }, { 1, -26 } } };
+
+//-----------------------------------------------------------------------------------------------------------------------
+static void timerCallbackBattery(void *data) 
 {
-	11, (GPoint []) { { 0, -8 }, { -3, -30 }, { -2, -30 }, { 0, -8 }, { -1, -30 }, { 0, -30 }, { 0, -8 }, { 1, -30 }, { 2, -30 }, { 0, -8 }, { -3, -30 } } 
-};
+	if (bIsCharging)
+	{
+		int nImage = 10 - (aktBattAnim / 10);
+		
+		bitmap_layer_set_bitmap(battery_layer, NULL);
+		gbitmap_destroy(batteryAkt);
+		batteryAkt = gbitmap_create_as_sub_bitmap(batteryAll, GRect(0, 10*nImage, 20, 10));
+		bitmap_layer_set_bitmap(battery_layer, batteryAkt);
 
-
-static const GPathInfo MINUTE_HAND_POINTS =
-{
-	14, (GPoint []) { { -3, -33 }, { -3, -39 }, { -2, -39 }, { -2, -33 }, { -1, -33 }, { -1, -39 }, { 0, -39 }, { 0, -33 }, { 1, -33 }, { 1, -39 }, { 2, -39 }, { 2, -33 }, { 3, -33 }, { 3, -39 } } 
-};
-
-static const GPathInfo SECOND_HAND_POINTS =
-{
-	3, (GPoint []) { { 0, -7 }, { -1, -26 }, { 1, -26 } } 
-};
-
+		aktBattAnim += 10;
+		if (aktBattAnim > 100)
+			aktBattAnim = aktBatt;
+		timer_batt = app_timer_register(1000, timerCallbackBattery, NULL);
+	}
+}
 //-----------------------------------------------------------------------------------------------------------------------
 void battery_state_service_handler(BatteryChargeState charge_state) 
 {
 	int nImage = 0;
-	if (charge_state.is_charging)
-		nImage = 10;
-	else 
-		nImage = 10 - (charge_state.charge_percent / 10);
+	aktBatt = charge_state.charge_percent;
 	
-	GRect sub_rect = GRect(0, 10*nImage, 20, 10);
-	bitmap_layer_set_bitmap(battery_layer, gbitmap_create_as_sub_bitmap(batteryAll, sub_rect));
+	if (charge_state.is_charging)
+	{
+		if (!bIsCharging)
+		{
+			nImage = 10;
+			bIsCharging = true;
+			aktBattAnim = aktBatt;
+			timer_batt = app_timer_register(1000, timerCallbackBattery, NULL);
+		}
+	}
+	else
+	{
+		nImage = 10 - (aktBatt / 10);
+		bIsCharging = false;
+	}
+	
+	bitmap_layer_set_bitmap(battery_layer, NULL);
+	gbitmap_destroy(batteryAkt);
+	batteryAkt = gbitmap_create_as_sub_bitmap(batteryAll, GRect(0, 10*nImage, 20, 10));
+	bitmap_layer_set_bitmap(battery_layer, batteryAkt);
 }
 //-----------------------------------------------------------------------------------------------------------------------
 void bluetooth_connection_handler(bool connected)
 {
 	layer_set_hidden(bitmap_layer_get_layer(radio_layer), connected != true);
 	
-	if (connected != true)
+	if (!connected && CfgData.vibr_bt)
 		vibes_enqueue_custom_pattern(vibe_pat_bt); 	
 }
 //-----------------------------------------------------------------------------------------------------------------------
@@ -94,16 +119,17 @@ static void clock_update_proc(Layer *layer, GContext *ctx)
 
 	//Hour Arrow
 	gpath_rotate_to(hour_arrow, (TRIG_MAX_ANGLE * (((t->tm_hour % 12) * 6) + (t->tm_min / 10))) / (12 * 6));
-	//gpath_draw_filled(ctx, hour_arrow); //Filling don't work on small objects :(
+	gpath_draw_filled(ctx, hour_arrow);
 	gpath_draw_outline(ctx, hour_arrow);
 		
 	//Minute = Hour Arrow + Minute Arrow
 	gpath_rotate_to(hour_arrow, TRIG_MAX_ANGLE * t->tm_min / 60);
-	//gpath_draw_filled(ctx, hour_arrow);
+	gpath_draw_filled(ctx, hour_arrow);
 	gpath_draw_outline(ctx, hour_arrow);
 	gpath_rotate_to(minute_arrow, TRIG_MAX_ANGLE * t->tm_min / 60);
-	//gpath_draw_filled(ctx, minute_arrow);
+	gpath_draw_filled(ctx, minute_arrow);
 	gpath_draw_outline(ctx, minute_arrow);
+
 }
 //-----------------------------------------------------------------------------------------------------------------------
 static void secs_update_proc(Layer *layer, GContext *ctx) 
@@ -190,6 +216,11 @@ static void update_configuration(void)
 	else	
 		CfgData.vibr = false;
 	
+    if (persist_exists(CONFIG_KEY_VIBR_BT))
+		CfgData.vibr_bt = persist_read_bool(CONFIG_KEY_VIBR_BT);
+	else	
+		CfgData.vibr_bt = true;
+	
     if (persist_exists(CONFIG_KEY_DATEFMT))
 		CfgData.datefmt = (int16_t)persist_read_int(CONFIG_KEY_DATEFMT);
 	else	
@@ -200,7 +231,7 @@ static void update_configuration(void)
 	else	
 		CfgData.secs = true;
 	
-	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Curr Conf: inv:%d, vibr:%d, datefmt:%d", CfgData.inv, CfgData.vibr, CfgData.datefmt);
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Curr Conf: inv:%d, vibr:%d, vibr_bt:%d, datefmt:%d", CfgData.inv, CfgData.vibr, CfgData.vibr_bt, CfgData.datefmt);
 	
 	Layer *window_layer = window_get_root_layer(window);
 
@@ -253,6 +284,9 @@ void in_received_handler(DictionaryIterator *received, void *ctx)
 
 		if (akt_tuple->key == CONFIG_KEY_VIBR)
 			persist_write_bool(CONFIG_KEY_VIBR, strcmp(akt_tuple->value->cstring, "yes") == 0);
+		
+		if (akt_tuple->key == CONFIG_KEY_VIBR_BT)
+			persist_write_bool(CONFIG_KEY_VIBR_BT, strcmp(akt_tuple->value->cstring, "yes") == 0);
 		
 		if (akt_tuple->key == CONFIG_KEY_SECS)
 			persist_write_bool(CONFIG_KEY_SECS, strcmp(akt_tuple->value->cstring, "yes") == 0);
@@ -350,8 +384,11 @@ void window_load(Window *window)
 	layer_add_child(window_layer, bitmap_layer_get_layer(radio_layer));
 	
 	//Init Inverter Layer
+#ifdef PBL_COLOR
+	inv_layer = inverter_layer_create(GRect(4, 23, 136, 123));
+#else
 	inv_layer = inverter_layer_create(bounds);	
-	
+#endif	
 	//Update Configuration
 	update_configuration();
 }
@@ -378,6 +415,7 @@ void window_unload(Window *window)
 	fonts_unload_custom_font(digitL);
 	
 	//Destroy GBitmaps
+	gbitmap_destroy(batteryAkt);
 	gbitmap_destroy(batteryAll);
 	gbitmap_destroy(background);
 
@@ -391,7 +429,8 @@ void window_unload(Window *window)
 	inverter_layer_destroy(inv_layer);
 }
 //-----------------------------------------------------------------------------------------------------------------------
-void handle_init(void) {
+void handle_init(void) 
+{
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers) {
 		.load = window_load,
@@ -412,7 +451,9 @@ void handle_init(void) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
 }
 //-----------------------------------------------------------------------------------------------------------------------
-void handle_deinit(void) {
+void handle_deinit(void) 
+{
+	app_timer_cancel(timer_batt);
 	app_message_deregister_callbacks();
 	tick_timer_service_unsubscribe();
 	battery_state_service_unsubscribe();
@@ -420,7 +461,8 @@ void handle_deinit(void) {
 	window_destroy(window);
 }
 //-----------------------------------------------------------------------------------------------------------------------
-int main(void) {
+int main(void) 
+{
 	  handle_init();
 	  app_event_loop();
 	  handle_deinit();
