@@ -16,7 +16,7 @@ Pebble.addEventListener("showConfiguration", function() {
     var options = JSON.parse(window.localStorage.getItem('cas_ae_20w_opt'));
     console.log("read options: " + JSON.stringify(options));
     console.log("showing configuration");
-	var uri = 'http://panicman.byto.de/config_c20ae20w.html?title=Casio%20AE-20W%20v2.2';
+	var uri = 'http://panicman.github.io/config_c20ae20w.html?title=Casio%20AE-20W%20v2.3';
     if (options) {
         uri += 
 			'&inv=' + encodeURIComponent(options['inv']) + 
