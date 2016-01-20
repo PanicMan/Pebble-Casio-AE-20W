@@ -13,17 +13,19 @@ Pebble.addEventListener("ready", function() {
 });
 
 Pebble.addEventListener("showConfiguration", function() {
-    var options = JSON.parse(window.localStorage.getItem('cas_ae_20w_opt'));
+    var options = JSON.parse(localStorage.getItem('cas_ae_20w_opt'));
     console.log("read options: " + JSON.stringify(options));
     console.log("showing configuration");
-	var uri = 'http://panicman.github.io/config_c20ae20w.html?title=Casio%20AE-20W%20v2.3';
+	var uri = 'http://panicman.github.io/config_c20ae20w.html?title=Casio%20AE-20W%20v2.5';
     if (options) {
         uri += 
-			'&inv=' + encodeURIComponent(options['inv']) + 
-			'&vibr=' + encodeURIComponent(options['vibr']) + 
-			'&vibr_bt=' + encodeURIComponent(options['vibr_bt']) + 
-			'&secs=' + encodeURIComponent(options['secs']) + 
-			'&datefmt=' + encodeURIComponent(options['datefmt']);
+			'&inv=' + encodeURIComponent(options.inv) + 
+			'&datemode=' + encodeURIComponent(options.datemode) + 
+			'&vibr=' + encodeURIComponent(options.vibr) + 
+			'&vibr_bt=' + encodeURIComponent(options.vibr_bt) + 
+			'&secs=' + encodeURIComponent(options.secs) + 
+			'&showsec=' + encodeURIComponent(options.showsec) + 
+			'&datefmt=' + encodeURIComponent(options.datefmt);
     }
 	console.log("Uri: "+uri);
     Pebble.openURL(uri);
@@ -31,10 +33,10 @@ Pebble.addEventListener("showConfiguration", function() {
 
 Pebble.addEventListener("webviewclosed", function(e) {
     console.log("configuration closed");
-    if (e.response != '') {
+    if (e.response !== '') {
         var options = JSON.parse(decodeURIComponent(e.response));
         console.log("storing options: " + JSON.stringify(options));
-        window.localStorage.setItem('cas_ae_20w_opt', JSON.stringify(options));
+        localStorage.setItem('cas_ae_20w_opt', JSON.stringify(options));
         Pebble.sendAppMessage(options, appMessageAck, appMessageNack);
     } else {
         console.log("no options received");

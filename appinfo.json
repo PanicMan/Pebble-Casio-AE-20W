@@ -1,8 +1,10 @@
 {
     "appKeys": {
         "datefmt": 3,
+        "datemode": 6,
         "inv": 1,
         "secs": 4,
+        "showsec": 7,
         "vibr": 2,
         "vibr_bt": 5
     },
@@ -17,38 +19,43 @@
             {
                 "file": "images/Background.png",
                 "name": "IMAGE_BACKGROUND",
-                "type": "png"
-            },
-            {
-                "file": "images/Battery.png",
-                "name": "IMAGE_UTILITIES",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/MenuImage.png",
                 "menuIcon": true,
                 "name": "IMAGE_MENU",
-                "type": "png"
+                "type": "bitmap"
+            },
+            {
+                "file": "images/Battery.png",
+                "name": "IMAGE_UTILITIES",
+                "targetPlatforms": null,
+                "type": "bitmap"
             },
             {
                 "characterRegex": "[-/0-9.]",
                 "compatibility": "2.7",
                 "file": "fonts/DIGITALBOLD2.TTF",
                 "name": "FONT_DIGITAL_20",
+                "targetPlatforms": null,
                 "type": "font"
             },
             {
-                "characterRegex": "[-0-9:\\s]",
+                "characterRegex": "[-0-9A-Z\u00c9\u00c1:\\s]",
                 "compatibility": "2.7",
                 "file": "fonts/DIGITALBOLD2.TTF",
                 "name": "FONT_DIGITAL_30",
+                "targetPlatforms": null,
                 "type": "font"
             },
             {
-                "characterRegex": "[-0-9:\\s]",
+                "characterRegex": "[-/0-9.:\\s]",
                 "compatibility": "2.7",
                 "file": "fonts/DIGITALBOLD2.TTF",
                 "name": "FONT_DIGITAL_40",
+                "targetPlatforms": null,
+                "trackingAdjust": -1,
                 "type": "font"
             }
         ]
@@ -60,7 +67,7 @@
         "basalt"
     ],
     "uuid": "36ceec93-b32e-47e3-8353-971daf398007",
-    "versionLabel": "2.3",
+    "versionLabel": "2.5",
     "watchapp": {
         "watchface": true
     }
