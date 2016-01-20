@@ -252,7 +252,7 @@ static void update_configuration(void)
     if (persist_exists(CONFIG_KEY_DATEMODE))
 		CfgData.datemode = persist_read_bool(CONFIG_KEY_DATEMODE);
 	else	
-		CfgData.datemode = true;
+		CfgData.datemode = false;
 	
     if (persist_exists(CONFIG_KEY_VIBR))
 		CfgData.vibr = persist_read_bool(CONFIG_KEY_VIBR);
@@ -272,12 +272,12 @@ static void update_configuration(void)
     if (persist_exists(CONFIG_KEY_SHOWSEC))
 		CfgData.showsec = persist_read_int(CONFIG_KEY_SHOWSEC);
 	else	
-		CfgData.showsec = 5;
+		CfgData.showsec = 1;
 	
     if (persist_exists(CONFIG_KEY_DATEFMT))
 		CfgData.datefmt = (int16_t)persist_read_int(CONFIG_KEY_DATEFMT);
 	else	
-		CfgData.datefmt = 1;
+		CfgData.datefmt = 0;
 
 	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Curr Conf: inv:%d, datemode:%d, vibr:%d, vibr_bt:%d, secs:%d, showsec:%d, datefmt:%d", CfgData.inv, CfgData.datemode, CfgData.vibr, CfgData.vibr_bt, CfgData.secs, CfgData.showsec, CfgData.datefmt);
 	
@@ -508,6 +508,17 @@ void window_unload(Window *window)
 //-----------------------------------------------------------------------------------------------------------------------
 void handle_init(void) 
 {
+	char* sLocale = setlocale(LC_TIME, ""), sLang[3];
+	if (strncmp(sLocale, "en", 2) == 0)
+		strcpy(sLang, "en");
+	else if (strncmp(sLocale, "de", 2) == 0)
+		strcpy(sLang, "de");
+	else if (strncmp(sLocale, "es", 2) == 0)
+		strcpy(sLang, "es");
+	else if (strncmp(sLocale, "fr", 2) == 0)
+		strcpy(sLang, "fr");
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Time locale is set to: %s/%s", sLocale, sLang);
+
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers) {
 		.load = window_load,
